@@ -2,7 +2,7 @@
 
 The **Java codegen** of the ESDM toolchain: it consumes an [ESDM](https://www.esdm.io/) model
 (Event-Sourced Domain Modeling - YAML documents describing an event-sourced domain) and emits a
-**real, runnable Spring Boot application** built onem, 
+**real, runnable Spring Boot application** built on
 [OpenCQRS](https://github.com/open-cqrs/opencqrs), with
 [EventSourcingDB](https://www.eventsourcingdb.io/) as the event store and
 [MongoDB](https://www.mongodb.com/) for read models.
