@@ -1,0 +1,41 @@
+# Generated stack: esdb (EventSourcingDB event store + UI), mongo (read models),
+# api (Spring Boot HTTP + in-process OpenCQRS projections).
+services:
+  esdb:
+    image: thenativeweb/eventsourcingdb:1.2.0
+    command:
+      - run
+      - --api-token=secret
+      - --data-directory-temporary
+      - --http-enabled
+      - --https-enabled=false
+      - --with-ui
+    ports:
+      - "3000:3000"
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  api:
+    build: .
+    environment:
+      HTTP_PORT: "8080"
+      MONGO_DB: app
+      MONGO_URL: "mongodb://mongo:27017"
+      ESDB_URL: "http://esdb:3000"
+      ESDB_API_TOKEN: secret
+    depends_on:
+      - esdb
+      - mongo
+    ports:
+      - "8080:8080"
+
+# Domain console: this stack serves the 0004 dev contract (/_dev/*) - point the
+# esdm-vue-reader viewer at http://localhost:8080 for commands / read models / events.
+
+volumes:
+  mongo-data:

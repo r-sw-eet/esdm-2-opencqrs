@@ -1,0 +1,26 @@
+# --- scaffold-project (managed) ---
+.idea/
+LOCKS.md
+CLAUDE.md
+HANDOFF.md
+journal/
+# --- end scaffold-project ---
+
+# The OpenCQRS patch, its unsent pull request and the fork policy. Internal until we have
+# actually talked to them; SCOPE.md section 10 carries what the repo needs to stand alone.
+/upstream/
+
+# Gradle / Java
+.gradle/
+build/
+target/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Own esdm lint binary - host tooling, fetched locally (not published)
+/tools/
+
+# Generated app output is disposable - regenerate with scripts/examples.sh.
+# The example SOURCE (model/, esdmgen.yaml) is tracked.
+examples/*/generated/
+
+.c4work/

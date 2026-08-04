@@ -1,0 +1,6 @@
+target: opencqrs-eventsourcingdb
+model: model
+out: generated
+options:
+  appName: todo
+  basePackage: app.todo

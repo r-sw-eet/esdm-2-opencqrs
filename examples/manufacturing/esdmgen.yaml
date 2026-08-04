@@ -1,0 +1,6 @@
+target: opencqrs-eventsourcingdb
+model: model
+out: generated
+options:
+  appName: manufacturing
+  basePackage: app.manufacturing

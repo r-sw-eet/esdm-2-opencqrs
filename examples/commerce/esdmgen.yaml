@@ -1,0 +1,6 @@
+target: opencqrs-eventsourcingdb
+model: model
+out: generated
+options:
+  appName: commerce
+  basePackage: app.commerce
