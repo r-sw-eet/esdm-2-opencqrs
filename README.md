@@ -23,7 +23,10 @@ conformance** against the golden answers recorded by the Symfony oracle - with n
 divergences. See [SCOPE.md](SCOPE.md) for the design, the ESDM -> OpenCQRS mapping and the
 answered spikes.
 
-Not done: proposal 0003 (`bpmn:map`), which is optional and lives upstream of code generation.
+Authoring from BPMN (proposal 0003) is [bpmn-2-esdm](https://github.com/r-sw-eet/bpmn-2-esdm), a
+separate tool: draw the process, and it writes the ESDM this generator reads. The mapping is
+stack-agnostic, so one tool serves the whole family and no generator carries its own copy. The
+emitted app serves the diagram back at `/_dev/bpmn` for the domain console.
 
 ## Target
 
