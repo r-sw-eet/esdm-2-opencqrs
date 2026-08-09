@@ -355,8 +355,7 @@ new runner in the conformance README. Per workspace rule, those edits stay uncom
 
 *Built. The slug registered in `targets:` is `opencqrs` (the adapter's `slug()`, matching how the
 other repos list `nimbus`/`python`, not the full target id). `todo`, `orders` and `manufacturing`
-pass; `drones` was deliberately left unregistered (nebula's model, never run here) and
-`commerce`/`factory` have no golden files. The runner lives in `conformance/` rather than a shell
+pass; `commerce`/`factory` have no golden files. The runner lives in `conformance/` rather than a shell
 script - `scripts/conformance.sh` just forwards to it, so the harness is Java like the rest.*
 
 **Phase 7 - optional.** `bpmn:map` port (proposal 0003), so BPMN authoring works here too. Purely
