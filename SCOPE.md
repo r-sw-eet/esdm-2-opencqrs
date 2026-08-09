@@ -362,18 +362,18 @@ script - `scripts/conformance.sh` just forwards to it, so the harness is Java li
 **Phase 7 - optional.** `bpmn:map` port (proposal 0003), so BPMN authoring works here too. Purely
 additive; the generator is complete without it. **Not started.**
 
-*What it actually blocks: `../esdm-studio`, the operator console. Its pipeline is draw → map →
-generate → run, and the map step shells out to `<codegen> bpmn:map` (`server.ts`, the `CODEGENS`
-table). So Studio can drive nimbus and symfony and not this generator, nor python, for want of that
-one command.*
+*What it used to block: `../esdm-studio`, the operator console, whose pipeline is draw → map →
+generate → run and whose map step shelled out to `<codegen> bpmn:map`. Porting the mapper here would
+have been the wrong fix. It reads BPMN and writes ESDM; its output is stack-agnostic, which is why
+nimbus's and symfony's were twins - identical function names, both mapper files exactly 588 lines. A
+third copy adds an implementation that can disagree with the other two about what a diagram means,
+and nothing would catch it: C4 compares emitted-app behaviour, not model production.*
 
-*Porting it here would be the wrong fix. The mapper reads BPMN and writes ESDM; its output is
-stack-agnostic, which is why nimbus's and symfony's are twins - identical function names, both
-mapper files exactly 588 lines. A third copy adds an implementation that can disagree with the other
-two about what a diagram means, and nothing would catch it: C4 compares emitted-app behaviour, not
-model production. The fix is one mapper the whole family shares, fetched as a pinned binary the way
-`scripts/fetch-esdm.sh` already fetches `esdm`. Then Studio calls it once, its `CODEGEN` switch
-selects only the generate step, and this generator becomes drivable without a line of BPMN code.*
+*Resolved on 2026-08-04 without touching this repo: the mapper moved out of the generators into
+`../bpmn-2-esdm`, one tool the whole family shares. Studio now runs it as its own step, so `CODEGEN`
+selects only the generate step. Since 2026-08-09 Studio drives this generator (`CODEGEN=opencqrs`)
+through `bin/esdmgen targets --json` and `bin/esdmgen generate <app-dir>` - the same two commands
+every sibling exposes - without a line of BPMN code here.*
 
 ---
 

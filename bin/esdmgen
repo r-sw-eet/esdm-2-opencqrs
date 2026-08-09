@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+# Launcher so tools can invoke the CLI as `bin/esdmgen <args>` like the siblings do,
+# instead of `./gradlew run --args="..."`, which cannot take appended arguments.
+set -e
+
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cli="$root/build/install/esdm-2-opencqrs/bin/esdm-2-opencqrs"
+
+# Build only when the start script is missing or a source file is newer, and stay
+# silent unless it fails - callers parse this command's stdout (`targets --json`).
+if [ ! -x "$cli" ] || [ -n "$(find "$root/src/main" "$root/build.gradle.kts" -newer "$cli" -print -quit 2>/dev/null)" ]; then
+    if ! log=$("$root/gradlew" -q -p "$root" installDist 2>&1); then
+        printf '%s\n' "$log" >&2
+        exit 1
+    fi
+fi
+
+exec "$cli" "$@"

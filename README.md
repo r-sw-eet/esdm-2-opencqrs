@@ -66,6 +66,12 @@ Requires JDK 21 and Docker.
 cd examples/todo/generated/opencqrs && docker compose up --build
 ```
 
+`bin/esdmgen <args>` is the same CLI without the `--args=` quoting, for tools that append their own
+arguments (it builds the start script on first use). That is how
+[esdm-studio](https://github.com/r-sw-eet/esdm-studio) drives this generator, through the two
+commands every sibling codegen exposes: `bin/esdmgen targets --json` and
+`bin/esdmgen generate <app-dir>`.
+
 The app serves the domain routes on `http://localhost:8080` plus the 0004 console contract at
 `/_dev/catalog`, `/_dev/bpmn` and `/_dev/events` - point [esdm-vue-reader](https://github.com/r-sw-eet/esdm-vue-reader)
 at it to drive the domain from a browser.
