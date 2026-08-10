@@ -10,16 +10,28 @@ public final class FeelJava {
     private FeelJava() {}
 
     public static String compile(FeelNode node, String basePackage) {
+        return compile(node, basePackage, "state");
+    }
+
+    /**
+     * Same compiler over a different receiver: guards read the write model {@code state}, a
+     * reaction mapping (proposal 0005) reads the handled {@code event}.
+     */
+    public static String compile(FeelNode node, String basePackage, String receiver) {
+        return compileNode(node, basePackage, receiver);
+    }
+
+    private static String compileNode(FeelNode node, String basePackage, String receiver) {
         return switch (node) {
-            case FeelNode.Or or -> "(" + compile(or.left(), basePackage) + " || " + compile(or.right(), basePackage) + ")";
+            case FeelNode.Or or -> "(" + compileNode(or.left(), basePackage, receiver) + " || " + compileNode(or.right(), basePackage, receiver) + ")";
             case FeelNode.And and ->
-                "(" + compile(and.left(), basePackage) + " && " + compile(and.right(), basePackage) + ")";
-            case FeelNode.Not not -> "!(" + compile(not.expression(), basePackage) + ")";
-            case FeelNode.Binary binary -> binaryExpression(binary, basePackage);
+                "(" + compileNode(and.left(), basePackage, receiver) + " && " + compileNode(and.right(), basePackage, receiver) + ")";
+            case FeelNode.Not not -> "!(" + compileNode(not.expression(), basePackage, receiver) + ")";
+            case FeelNode.Binary binary -> binaryExpression(binary, basePackage, receiver);
             case FeelNode.In in -> "java.util.List.of("
-                    + in.list().stream().map(item -> compile(item, basePackage)).collect(Collectors.joining(", "))
-                    + ").contains(" + compile(in.expression(), basePackage) + ")";
-            case FeelNode.Id id -> identifier(id.name());
+                    + in.list().stream().map(item -> compileNode(item, basePackage, receiver)).collect(Collectors.joining(", "))
+                    + ").contains(" + compileNode(in.expression(), basePackage, receiver) + ")";
+            case FeelNode.Id id -> identifier(id.name(), receiver);
             case FeelNode.Str str -> Q.string(str.value());
             case FeelNode.Num num -> number(num.value());
             case FeelNode.Bool bool -> bool.value() ? "true" : "false";
@@ -30,9 +42,9 @@ public final class FeelJava {
         };
     }
 
-    private static String binaryExpression(FeelNode.Binary binary, String basePackage) {
-        String left = compile(binary.left(), basePackage);
-        String right = compile(binary.right(), basePackage);
+    private static String binaryExpression(FeelNode.Binary binary, String basePackage, String receiver) {
+        String left = compileNode(binary.left(), basePackage, receiver);
+        String right = compileNode(binary.right(), basePackage, receiver);
 
         // Both go through Guards: FEEL compares numbers by value across box types, and orders
         // dates-as-strings as well as numbers - Java has no operator that spans either case.
@@ -44,11 +56,12 @@ public final class FeelJava {
         };
     }
 
-    private static String identifier(String name) {
-        if (name.equals("status")) {
+    private static String identifier(String name, String receiver) {
+        // Only the write model's status can be unset mid-lifecycle; an event carries what it carries.
+        if (receiver.equals("state") && name.equals("status")) {
             return "(state.status() == null ? \"\" : state.status())";
         }
-        return "state." + Str.camel(name) + "()";
+        return receiver + "." + Str.camel(name) + "()";
     }
 
     private static String number(double value) {

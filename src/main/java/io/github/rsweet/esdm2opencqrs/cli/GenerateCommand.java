@@ -5,6 +5,8 @@ import io.github.rsweet.esdm2opencqrs.adapter.AdapterRegistry;
 import io.github.rsweet.esdm2opencqrs.adapter.GeneratedProject;
 import io.github.rsweet.esdm2opencqrs.feel.Feel;
 import io.github.rsweet.esdm2opencqrs.feel.FeelException;
+import io.github.rsweet.esdm2opencqrs.feel.FeelNode;
+import io.github.rsweet.esdm2opencqrs.feel.Mapping;
 import io.github.rsweet.esdm2opencqrs.lint.EsdmLinter;
 import io.github.rsweet.esdm2opencqrs.lint.LintFinding;
 import io.github.rsweet.esdm2opencqrs.lint.LintResult;
@@ -13,8 +15,10 @@ import io.github.rsweet.esdm2opencqrs.model.Command;
 import io.github.rsweet.esdm2opencqrs.model.DocumentLoader;
 import io.github.rsweet.esdm2opencqrs.model.Feature;
 import io.github.rsweet.esdm2opencqrs.model.Field;
+import io.github.rsweet.esdm2opencqrs.model.Event;
 import io.github.rsweet.esdm2opencqrs.model.Model;
 import io.github.rsweet.esdm2opencqrs.model.ModelFactory;
+import io.github.rsweet.esdm2opencqrs.model.Policy;
 import io.github.rsweet.esdm2opencqrs.model.Raw;
 import io.github.rsweet.esdm2opencqrs.model.StateMachine;
 import io.github.rsweet.esdm2opencqrs.model.Yamls;
@@ -86,6 +90,9 @@ public final class GenerateCommand implements Callable<Integer> {
             return 1;
         }
         if (!skipLint && !validateFeatureScenarios(model)) {
+            return 1;
+        }
+        if (!skipLint && !validateReactionMappings(model)) {
             return 1;
         }
 
@@ -267,6 +274,67 @@ public final class GenerateCommand implements Callable<Integer> {
         System.out.println("\nFeature scenario validation\n");
         errors.forEach(e -> System.out.println("  error " + e));
         error("Feature scenarios declare events their command does not publish - aborting before generation.");
+        return false;
+    }
+
+    /**
+     * Reaction mapping gate (proposal 0005): a policy's {@code esdm-extensions.io/mapping} must
+     * assign only fields the emitted command declares, must produce every required one, and its
+     * expressions bind against the handled event's payload.
+     */
+    private static boolean validateReactionMappings(Model model) {
+        List<String> errors = new ArrayList<>();
+        for (Policy policy : model.policies()) {
+            if (policy.mapping().isEmpty()) {
+                continue;
+            }
+            Aggregate handled = model.aggregate(policy.handleContext(), policy.handleAggregate());
+            Aggregate emitting = model.aggregate(policy.emitContext(), policy.emitAggregate());
+            if (handled == null || emitting == null) {
+                continue;
+            }
+            Event event = handled.event(policy.handleEvent());
+            Command command = emitting.command(policy.emitCommand());
+            if (event == null || command == null) {
+                continue;
+            }
+
+            Map<String, FeelNode> mapping;
+            try {
+                mapping = Mapping.parse(policy.mapping());
+            } catch (FeelException e) {
+                errors.add(policy.name() + ": " + e.getMessage());
+                continue;
+            }
+
+            List<String> declared = command.data().fields().stream().map(Field::name).toList();
+            for (String key : mapping.keySet()) {
+                if (!declared.contains(key) && !key.equals(emitting.identityField())) {
+                    errors.add(policy.name() + ": \"" + key + "\" is not a field of command \"" + command.name()
+                            + "\" (declared: " + (declared.isEmpty() ? "nothing" : String.join(", ", declared)) + ")");
+                }
+            }
+            for (Field field : command.data().fields()) {
+                if (field.required() && !mapping.containsKey(field.name())) {
+                    errors.add(policy.name() + ": required field \"" + field.name() + "\" of command \""
+                            + command.name() + "\" is not assigned by the mapping");
+                }
+            }
+
+            List<String> bindable =
+                    new ArrayList<>(event.data().fields().stream().map(Field::name).toList());
+            errors.addAll(Mapping.validate(mapping, bindable).stream()
+                    .map(error -> policy.name() + ": " + error)
+                    .toList());
+        }
+
+        if (errors.isEmpty()) {
+            return true;
+        }
+
+        System.out.println("\nReaction mapping validation\n");
+        errors.forEach(e -> System.out.println("  error " + e));
+        error("Reaction mappings are invalid - aborting before generation.");
         return false;
     }
 

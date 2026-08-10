@@ -13,6 +13,7 @@ import java.util.Map;
 public final class ModelFactory {
 
     private static final String LIFECYCLE_ANNOTATION = "esdm-extensions.io/lifecycle";
+    private static final String MAPPING_ANNOTATION = "esdm-extensions.io/mapping";
 
     private ModelFactory() {}
 
@@ -209,7 +210,8 @@ public final class ModelFactory {
                     Raw.string(handle.get("event"), ""),
                     Raw.string(emit.get("boundedContext"), "default"),
                     Raw.string(emit.get("aggregate"), ""),
-                    Raw.string(emit.get("command"), "")));
+                    Raw.string(emit.get("command"), ""),
+                    Raw.string(annotation(document, MAPPING_ANNOTATION), "")));
         }
 
         return policies;

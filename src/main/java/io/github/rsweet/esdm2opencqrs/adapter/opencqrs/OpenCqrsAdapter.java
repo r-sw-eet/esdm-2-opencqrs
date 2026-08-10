@@ -4,6 +4,8 @@ import io.github.rsweet.esdm2opencqrs.adapter.Adapter;
 import io.github.rsweet.esdm2opencqrs.adapter.GeneratedProject;
 import io.github.rsweet.esdm2opencqrs.feel.Feel;
 import io.github.rsweet.esdm2opencqrs.feel.FeelException;
+import io.github.rsweet.esdm2opencqrs.feel.FeelNode;
+import io.github.rsweet.esdm2opencqrs.feel.Mapping;
 import io.github.rsweet.esdm2opencqrs.model.Aggregate;
 import io.github.rsweet.esdm2opencqrs.model.BoundedContext;
 import io.github.rsweet.esdm2opencqrs.model.Command;
@@ -609,12 +611,21 @@ public class OpenCqrsAdapter implements Adapter {
             String eventType = Naming.typeName(event.name()) + "Event";
             String commandType = Naming.typeName(command.name()) + "Command";
 
+            // A declared mapping (proposal 0005) wins per field; everything it leaves out falls back
+            // to the convention below, which is what that proposal documents as the default.
+            Map<String, FeelNode> mapping = policy.mapping().isEmpty()
+                    ? Map.of()
+                    : Mapping.parse(policy.mapping());
+
             // The emitted command's "<handled aggregate>Id" field carries the handled event's identity;
             // the reacting aggregate's own id is minted here, the way a create controller would.
             String crossReference = Naming.memberName(policy.handleAggregate() + "-id");
             List<String> arguments = new ArrayList<>();
             for (Field field : commandFields(emitAggregate, command)) {
-                if (Naming.memberName(field.name()).equals(crossReference)) {
+                FeelNode assigned = mapping.get(field.name());
+                if (assigned != null) {
+                    arguments.add(FeelJava.compile(assigned, basePackage, "event"));
+                } else if (Naming.memberName(field.name()).equals(crossReference)) {
                     arguments.add("event." + Naming.memberName(handleAggregate.identityField()) + "()");
                 } else if (field.name().equals(emitAggregate.identityField())
                         && !command.data().has(field.name())) {
