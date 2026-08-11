@@ -25,6 +25,9 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class ReactionMappingTest {
 
+    /** Unique to the reaction document: only a policy carries deliveryGuarantee. */
+    private static final String POLICY_ANCHOR = "scope:\n  domain: manufacturing\ndeliveryGuarantee:";
+
     private static final String DEFAULT_MAPPING =
             "{ requestId: id, customerName: customerName, product: product, quantity: quantity }";
 
@@ -56,17 +59,21 @@ class ReactionMappingTest {
 
     /** A copy of the canonical manufacturing model, optionally carrying the mapping annotation. */
     private static Path model(Path work, String name, String mapping) throws IOException {
-        Path source = Path.of("../esdm-2-symfony/examples/manufacturing/model");
+        Path source = Path.of("examples/manufacturing/model");
         Path target = work.resolve(name);
         Files.createDirectories(target);
 
         for (Path file : Files.list(source).toList()) {
             String text = Files.readString(file, StandardCharsets.UTF_8);
-            if (mapping != null && file.getFileName().toString().equals("manufacturing.esdm.yaml")) {
-                text = text.replace(
-                        "kind: policy\nname: draft-quote-on-request\nscope:",
-                        "kind: policy\nname: draft-quote-on-request\nmetadata:\n  annotations:\n"
-                                + "    esdm-extensions.io/mapping: \"" + mapping + "\"\nscope:");
+            if (file.getFileName().toString().equals("manufacturing.esdm.yaml")) {
+                // Independent of whether the fixture itself declares a mapping: drop any, add ours.
+                text = text.replaceAll("\nmetadata:\n  annotations:\n    esdm-extensions\\.io/mapping: \"[^\"]*\"", "");
+                if (mapping != null) {
+                    text = text.replace(
+                            POLICY_ANCHOR,
+                            "metadata:\n  annotations:\n    esdm-extensions.io/mapping: \"" + mapping + "\"\n"
+                                    + POLICY_ANCHOR);
+                }
             }
             Files.writeString(target.resolve(file.getFileName()), text, StandardCharsets.UTF_8);
         }
@@ -77,7 +84,7 @@ class ReactionMappingTest {
     @Test
     void theCanonicalModelStillCarriesTheReaction() throws IOException {
         List<String> policies = new ArrayList<>();
-        Path file = Path.of("../esdm-2-symfony/examples/manufacturing/model/manufacturing.esdm.yaml");
+        Path file = Path.of("examples/manufacturing/model/manufacturing.esdm.yaml");
         for (Object document : Yamls.newYaml().loadAll(Files.readString(file, StandardCharsets.UTF_8))) {
             Map<String, Object> raw = Raw.record(document);
             if ("policy".equals(Raw.string(raw.get("kind"), ""))) {

@@ -285,6 +285,13 @@ publishes:
 apiVersion: schema.esdm.io/core/v1
 kind: policy
 name: draft-quote-on-request
+# The reaction's payload, declared rather than left to each generator's convention
+# (esdm-extensions proposal 0005). This states exactly what the convention already did,
+# so the emitted apps are byte-identical - it is the conformance suite's only coverage
+# of the mapping path.
+metadata:
+  annotations:
+    esdm-extensions.io/mapping: "{ requestId: id, customerName: customerName, product: product, quantity: quantity }"
 scope:
   domain: manufacturing
 deliveryGuarantee: at-most-once
