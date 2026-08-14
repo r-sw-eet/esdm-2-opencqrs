@@ -29,7 +29,7 @@ class ReactionMappingTest {
     private static final String POLICY_ANCHOR = "scope:\n  domain: manufacturing\ndeliveryGuarantee:";
 
     private static final String DEFAULT_MAPPING =
-            "{ requestId: id, customerName: customerName, product: product, quantity: quantity }";
+            "{ requestId: id, customerName: customerName, product: product, quantity: quantity, tags: tags }";
 
     @Test
     void aMappingThatStatesTheDefaultChangesNothing(@TempDir Path work) throws IOException {
@@ -41,14 +41,14 @@ class ReactionMappingTest {
 
     @Test
     void aDifferentMappingReachesTheEmittedReaction(@TempDir Path work) throws IOException {
-        String swapped = "{ requestId: id, customerName: product, product: customerName, quantity: quantity }";
+        String swapped = "{ requestId: id, customerName: product, product: customerName, quantity: quantity, tags: tags }";
 
         String reaction = generate(model(work, "swapped", swapped))
                 .get("src/main/java/app/manufacturing/policies/DraftQuoteOnRequestPolicy.java");
 
         assertThat(reaction)
                 .contains("new DraftQuoteCommand(UUID.randomUUID().toString(), event.id(), "
-                        + "event.product(), event.customerName(), event.quantity())");
+                        + "event.product(), event.customerName(), event.quantity(), event.tags())");
     }
 
     private static Map<String, String> generate(Path modelDir) {

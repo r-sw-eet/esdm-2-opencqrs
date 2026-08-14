@@ -529,6 +529,23 @@ final class Bootstrap {
                                 .toString();
                     }
 
+                    /** {@code a.b} on an object-typed field, which arrives here as a map. */
+                    public static Object property(Object value, String name) {
+                        return value instanceof java.util.Map<?, ?> map ? map.get(name) : null;
+                    }
+
+                    public static long count(Object value) {
+                        return value instanceof java.util.Collection<?> items ? items.size() : 0;
+                    }
+
+                    public static double sum(Object value) {
+                        if (!(value instanceof java.util.Collection<?> items)) {
+                            return 0;
+                        }
+
+                        return items.stream().mapToDouble(Guards::number).sum();
+                    }
+
                     public static boolean startsWith(Object value, Object prefix) {
                         return String.valueOf(value).startsWith(String.valueOf(prefix));
                     }
@@ -559,7 +576,7 @@ final class Bootstrap {
                         };
                     }
 
-                    private static double number(Object value) {
+                    static double number(Object value) {
                         return value instanceof Number n ? n.doubleValue() : Double.NaN;
                     }
 

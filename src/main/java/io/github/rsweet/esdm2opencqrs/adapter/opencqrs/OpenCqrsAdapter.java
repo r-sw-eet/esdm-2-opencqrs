@@ -989,6 +989,9 @@ public class OpenCqrsAdapter implements Adapter {
             case "boolean" -> Boolean.parseBoolean(String.valueOf(value)) ? "true" : "false";
             case "number" -> Double.parseDouble(String.valueOf(value)) + "d";
             case "integer" -> Long.parseLong(String.valueOf(value)) + "L";
+            // A collection would otherwise be stringified into "[rush]", which does not compile.
+            case "array", "object" -> JavaTypes.defaultLiteral(
+                    new Field(field.name(), field.jsonType(), field.required(), value, true, field.identity()));
             default -> Q.string(String.valueOf(value));
         };
     }

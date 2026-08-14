@@ -10,7 +10,7 @@ public final class Lexer {
 
     // Anchored, ordered alternation; longest operators first.
     private static final Pattern PATTERN =
-            Pattern.compile("(\\s+)|(\\d+(?:\\.\\d+)?)|(\"[^\"]*\")|(\\.\\.)|(<=|>=|!=|=|<|>)|([-+*/])"
+            Pattern.compile("(\\s+)|(\\d+(?:\\.\\d+)?)|(\"[^\"]*\")|(\\.\\.)|(<=|>=|!=|=|<|>)|([-+*/])|(\\.)"
                     + "|([()\\[\\],])|([A-Za-z_][A-Za-z0-9_]*)");
 
     private Lexer() {}
@@ -40,7 +40,7 @@ public final class Lexer {
                 type = Token.Type.STR;
             } else if (Character.isLetter(first) || first == '_') {
                 type = Token.Type.NAME;
-            } else if ("()[],".indexOf(first) >= 0 || value.equals("..")) {
+            } else if ("()[],".indexOf(first) >= 0 || value.equals("..") || value.equals(".")) {
                 type = Token.Type.PUNC;
             } else {
                 type = Token.Type.OP;

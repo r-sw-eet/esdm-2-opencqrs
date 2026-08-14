@@ -28,6 +28,8 @@ public final class JavaTypes {
                 case "number" -> "0.0d";
                 case "integer" -> "0L";
                 case "string" -> "\"\"";
+                case "array" -> "java.util.List.of()";
+                case "object" -> "java.util.Map.of()";
                 default -> "null";
             };
         }
@@ -37,8 +39,23 @@ public final class JavaTypes {
             case "number" -> Double.parseDouble(String.valueOf(value)) + "d";
             case "integer" -> Long.parseLong(String.valueOf(value)) + "L";
             case "string" -> Q.string(String.valueOf(value));
+            case "array" -> collection(value);
+            case "object" -> "java.util.Map.of()";
             default -> "null";
         };
+    }
+
+    /** A literal list, which the GWT fixtures need now that a model can declare one. */
+    private static String collection(Object value) {
+        if (!(value instanceof java.util.Collection<?> items) || items.isEmpty()) {
+            return "java.util.List.of()";
+        }
+
+        return items.stream()
+                .map(item -> item instanceof Number || item instanceof Boolean
+                        ? String.valueOf(item)
+                        : Q.string(String.valueOf(item)))
+                .collect(java.util.stream.Collectors.joining(", ", "java.util.List.of(", ")"));
     }
 
     public static String nullLiteral(Field field) {

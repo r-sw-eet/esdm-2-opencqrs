@@ -58,6 +58,25 @@ public final class Parser {
     }
 
     private FeelNode parseOr() {
+        // `every x in xs satisfies p` and its `some` twin bind the variable for the predicate only.
+        if (isKeyword("every") || isKeyword("some")) {
+            boolean everyone = isKeyword("every");
+            advance();
+            Token variable = peek();
+            expectType(Token.Type.NAME);
+            advance();
+            if (!isKeyword("in")) {
+                throw new FeelException("Expected \"in\" in a quantified expression");
+            }
+            advance();
+            FeelNode collection = parsePostfix();
+            if (!isKeyword("satisfies")) {
+                throw new FeelException("Expected \"satisfies\" in a quantified expression");
+            }
+            advance();
+            return new FeelNode.Quantified(everyone, variable.value(), collection, parseOr());
+        }
+
         // `if` sits at the lowest precedence, so its branches are whole expressions and it needs
         // no parentheses to hold them.
         if (isKeyword("if")) {
@@ -136,13 +155,26 @@ public final class Parser {
 
     /** Binds tighter than {@code +} and {@code -}. */
     private FeelNode parseMultiplicative() {
-        FeelNode left = parsePrimary();
+        FeelNode left = parsePostfix();
         while (at("*") || at("/")) {
             String operator = peek().value();
             advance();
-            left = new FeelNode.Binary(operator, left, parsePrimary());
+            left = new FeelNode.Binary(operator, left, parsePostfix());
         }
         return left;
+    }
+
+    /** {@code a.b} binds tighter than any operator. */
+    private FeelNode parsePostfix() {
+        FeelNode node = parsePrimary();
+        while (at(".")) {
+            advance();
+            Token property = peek();
+            expectType(Token.Type.NAME);
+            advance();
+            node = new FeelNode.Path(node, property.value());
+        }
+        return node;
     }
 
     /** {@code x in [a, b]} stays a membership test; {@code x in [1..10]} desugars to a range. */
@@ -171,7 +203,7 @@ public final class Parser {
         return new FeelNode.In(left, List.copyOf(items));
     }
 
-    private static final List<String> FUNCTIONS = List.of("date", "duration", "contains");
+    private static final List<String> FUNCTIONS = List.of("date", "duration", "contains", "count", "sum");
 
     /** Returns the function name if this token (plus maybe the next) starts a supported call. */
     private String twoWordFunction(String lower) {

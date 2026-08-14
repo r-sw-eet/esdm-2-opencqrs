@@ -12,18 +12,38 @@ public record Schema(List<Field> fields) {
         List<Object> required = Raw.list(raw.get("required"));
         List<Field> fields = new ArrayList<>();
 
-        properties.forEach((name, definition) -> {
-            Map<String, Object> def = Raw.record(definition);
-            fields.add(new Field(
-                    name,
-                    def.get("type") == null ? "mixed" : String.valueOf(def.get("type")),
-                    required.contains(name),
-                    def.get("default"),
-                    def.containsKey("default"),
-                    false));
-        });
+        properties.forEach((name, definition) -> fields.add(field(name, Raw.record(definition), required.contains(name))));
 
         return new Schema(List.copyOf(fields));
+    }
+
+    /** Keeps an object's own properties and an array's element, which FEEL needs to bind against. */
+    private static Field field(String name, Map<String, Object> definition, boolean required) {
+        String type = definition.get("type") == null ? "mixed" : String.valueOf(definition.get("type"));
+        List<Field> nested = List.of();
+        Field element = null;
+
+        if (type.equals("object")) {
+            Map<String, Object> properties = Raw.record(definition.get("properties"));
+            List<Object> innerRequired = Raw.list(definition.get("required"));
+            List<Field> inner = new ArrayList<>();
+            properties.forEach((inner_name, inner_definition) ->
+                    inner.add(field(inner_name, Raw.record(inner_definition), innerRequired.contains(inner_name))));
+            nested = List.copyOf(inner);
+        }
+        if (type.equals("array") && definition.get("items") != null) {
+            element = field("item", Raw.record(definition.get("items")), true);
+        }
+
+        return new Field(
+                name,
+                type,
+                required,
+                definition.get("default"),
+                definition.containsKey("default"),
+                false,
+                nested,
+                element);
     }
 
     public static Schema empty() {

@@ -19,36 +19,50 @@ public final class FeelJava {
      * reaction mapping (proposal 0005) reads the handled {@code event}.
      */
     public static String compile(FeelNode node, String basePackage, String receiver) {
-        return compileNode(node, basePackage, receiver);
+        return compileNode(node, basePackage, receiver, null);
     }
 
     private static String compileNode(FeelNode node, String basePackage, String receiver) {
+        return compileNode(node, basePackage, receiver, null);
+    }
+
+    /**
+     * {@code local} is the variable a quantifier binds: inside {@code every x in xs satisfies …}
+     * the identifier {@code x} is the lambda parameter rather than a field of the receiver.
+     */
+    private static String compileNode(FeelNode node, String basePackage, String receiver, String local) {
         return switch (node) {
-            case FeelNode.Or or -> "(" + compileNode(or.left(), basePackage, receiver) + " || " + compileNode(or.right(), basePackage, receiver) + ")";
+            case FeelNode.Or or -> "(" + compileNode(or.left(), basePackage, receiver, local) + " || " + compileNode(or.right(), basePackage, receiver, local) + ")";
             case FeelNode.And and ->
-                "(" + compileNode(and.left(), basePackage, receiver) + " && " + compileNode(and.right(), basePackage, receiver) + ")";
-            case FeelNode.Not not -> "!(" + compileNode(not.expression(), basePackage, receiver) + ")";
-            case FeelNode.Binary binary -> binaryExpression(binary, basePackage, receiver);
+                "(" + compileNode(and.left(), basePackage, receiver, local) + " && " + compileNode(and.right(), basePackage, receiver, local) + ")";
+            case FeelNode.Not not -> "!(" + compileNode(not.expression(), basePackage, receiver, local) + ")";
+            case FeelNode.Binary binary -> binaryExpression(binary, basePackage, receiver, local);
             case FeelNode.In in -> "java.util.List.of("
-                    + in.list().stream().map(item -> compileNode(item, basePackage, receiver)).collect(Collectors.joining(", "))
-                    + ").contains(" + compileNode(in.expression(), basePackage, receiver) + ")";
-            case FeelNode.Id id -> identifier(id.name(), receiver);
+                    + in.list().stream().map(item -> compileNode(item, basePackage, receiver, local)).collect(Collectors.joining(", "))
+                    + ").contains(" + compileNode(in.expression(), basePackage, receiver, local) + ")";
+            case FeelNode.Id id -> id.name().equals(local) ? local : identifier(id.name(), receiver);
+            case FeelNode.Path path -> basePackage + ".support.Guards.property("
+                    + compileNode(path.target(), basePackage, receiver, local) + ", \"" + path.property() + "\")";
+            case FeelNode.Quantified quantified -> compileNode(quantified.collection(), basePackage, receiver, local)
+                    + ".stream()." + (quantified.everyone() ? "allMatch" : "anyMatch") + "("
+                    + quantified.variable() + " -> "
+                    + compileNode(quantified.predicate(), basePackage, receiver, quantified.variable()) + ")";
             case FeelNode.Str str -> Q.string(str.value());
             case FeelNode.Num num -> number(num.value());
             case FeelNode.Bool bool -> bool.value() ? "true" : "false";
             case FeelNode.NullLiteral ignored -> "null";
-            case FeelNode.Negate negate -> "-(" + compileNode(negate.expression(), basePackage, receiver) + ")";
+            case FeelNode.Negate negate -> "-(" + compileNode(negate.expression(), basePackage, receiver, local) + ")";
             case FeelNode.Conditional conditional -> "("
-                    + compileNode(conditional.condition(), basePackage, receiver) + " ? "
-                    + compileNode(conditional.whenTrue(), basePackage, receiver) + " : "
-                    + compileNode(conditional.whenFalse(), basePackage, receiver) + ")";
-            case FeelNode.Call call -> call(call, basePackage, receiver);
+                    + compileNode(conditional.condition(), basePackage, receiver, local) + " ? "
+                    + compileNode(conditional.whenTrue(), basePackage, receiver, local) + " : "
+                    + compileNode(conditional.whenFalse(), basePackage, receiver, local) + ")";
+            case FeelNode.Call call -> call(call, basePackage, receiver, local);
         };
     }
 
-    private static String binaryExpression(FeelNode.Binary binary, String basePackage, String receiver) {
-        String left = compileNode(binary.left(), basePackage, receiver);
-        String right = compileNode(binary.right(), basePackage, receiver);
+    private static String binaryExpression(FeelNode.Binary binary, String basePackage, String receiver, String local) {
+        String left = compileNode(binary.left(), basePackage, receiver, local);
+        String right = compileNode(binary.right(), basePackage, receiver, local);
 
         // Both go through Guards: FEEL compares numbers by value across box types, and orders
         // dates-as-strings as well as numbers - Java has no operator that spans either case.
@@ -91,10 +105,10 @@ public final class FeelJava {
      * already compares dates as ISO strings and lexical order is chronological there; `duration`
      * yields whole days, which is all {@link Guards#datePlusDays} needs.
      */
-    private static String call(FeelNode.Call call, String basePackage, String receiver) {
+    private static String call(FeelNode.Call call, String basePackage, String receiver, String local) {
         String guards = basePackage + ".support.Guards.";
         List<String> arguments =
-                call.arguments().stream().map(argument -> compileNode(argument, basePackage, receiver)).toList();
+                call.arguments().stream().map(argument -> compileNode(argument, basePackage, receiver, local)).toList();
 
         return switch (call.function()) {
             case "today" -> "java.time.LocalDate.now().toString()";
@@ -104,6 +118,8 @@ public final class FeelJava {
             case "starts with" -> guards + "startsWith(" + arguments.get(0) + ", " + arguments.get(1) + ")";
             case "ends with" -> guards + "endsWith(" + arguments.get(0) + ", " + arguments.get(1) + ")";
             case "contains" -> guards + "contains(" + arguments.get(0) + ", " + arguments.get(1) + ")";
+            case "count" -> guards + "count(" + arguments.get(0) + ")";
+            case "sum" -> guards + "sum(" + arguments.get(0) + ")";
             default -> throw new IllegalStateException("unsupported function " + call.function());
         };
     }

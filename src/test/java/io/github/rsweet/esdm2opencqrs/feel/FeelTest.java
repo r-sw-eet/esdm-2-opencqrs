@@ -49,6 +49,32 @@ class FeelTest {
     }
 
     @Test
+    void aQuantifierBindsItsVariableForThePredicateOnly() {
+        assertThat(Feel.validate(Feel.parse("every t in tags satisfies t != \"\""), java.util.List.of("tags")))
+                .isEmpty();
+        assertThat(Feel.validate(Feel.parse("some t in tags satisfies u = 1"), java.util.List.of("tags")))
+                .containsExactly("unknown field \"u\"");
+    }
+
+    @Test
+    void theModelLayerKeepsNestedAndElementTypes() {
+        io.github.rsweet.esdm2opencqrs.model.Schema schema =
+                io.github.rsweet.esdm2opencqrs.model.Schema.fromRaw(java.util.Map.of(
+                        "properties",
+                        java.util.Map.of(
+                                "tags", java.util.Map.of("type", "array", "items", java.util.Map.of("type", "string")),
+                                "customer",
+                                java.util.Map.of(
+                                        "type",
+                                        "object",
+                                        "properties",
+                                        java.util.Map.of("name", java.util.Map.of("type", "string"))))));
+
+        assertThat(schema.field("tags").element().jsonType()).isEqualTo("string");
+        assertThat(schema.field("customer").property("name").jsonType()).isEqualTo("string");
+    }
+
+    @Test
     void callsCarryArgumentsAndTheirArityIsChecked() {
         assertThat(Feel.validate(Feel.parse("contains(product, \"c\")"), java.util.List.of("product")))
                 .isEmpty();

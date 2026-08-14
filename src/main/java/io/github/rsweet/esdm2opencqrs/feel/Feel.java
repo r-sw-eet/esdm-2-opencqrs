@@ -32,7 +32,8 @@ public final class Feel {
     private static final List<String> ARITHMETIC = List.of("+", "-", "*", "/");
 
     private static final Map<String, Integer> ARITY = Map.of(
-            "today", 0, "now", 0, "date", 1, "duration", 1, "starts with", 2, "ends with", 2, "contains", 2);
+            "today", 0, "now", 0, "date", 1, "duration", 1, "starts with", 2, "ends with", 2, "contains", 2,
+            "count", 1, "sum", 1);
 
     private static void arithmetic(FeelNode node, Map<String, String> types, List<String> errors) {
         switch (node) {
@@ -61,6 +62,10 @@ public final class Feel {
             case FeelNode.Not not -> arithmetic(not.expression(), types, errors);
             case FeelNode.Negate negate -> arithmetic(negate.expression(), types, errors);
             case FeelNode.Call call -> call.arguments().forEach(argument -> arithmetic(argument, types, errors));
+            case FeelNode.Quantified quantified -> {
+                arithmetic(quantified.collection(), types, errors);
+                arithmetic(quantified.predicate(), types, errors);
+            }
             case FeelNode.Conditional conditional -> {
                 arithmetic(conditional.condition(), types, errors);
                 arithmetic(conditional.whenTrue(), types, errors);
@@ -106,6 +111,13 @@ public final class Feel {
                 bind(binary.right(), allowed, errors);
             }
             case FeelNode.Not not -> bind(not.expression(), allowed, errors);
+            case FeelNode.Path path -> bind(path.target(), allowed, errors);
+            case FeelNode.Quantified quantified -> {
+                bind(quantified.collection(), allowed, errors);
+                List<String> inner = new ArrayList<>(allowed);
+                inner.add(quantified.variable());
+                bind(quantified.predicate(), inner, errors);
+            }
             case FeelNode.Negate negate -> bind(negate.expression(), allowed, errors);
             case FeelNode.Conditional conditional -> {
                 bind(conditional.condition(), allowed, errors);
