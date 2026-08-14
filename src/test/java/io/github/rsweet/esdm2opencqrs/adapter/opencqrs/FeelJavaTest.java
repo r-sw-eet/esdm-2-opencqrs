@@ -1,6 +1,7 @@
 package io.github.rsweet.esdm2opencqrs.adapter.opencqrs;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.rsweet.esdm2opencqrs.feel.Feel;
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,15 @@ class FeelJavaTest {
                         "app.demo.support.Guards.equal(state.a(), true)", "state.a()"));
         assertThat(compile("-amount > 1"))
                 .isEqualTo("app.demo.support.Guards.ordered(\">\", -(state.amount()), 1)");
+    }
+
+    @Test
+    void dateArithmeticIsAShiftAndTheDurationIsResolvedHere() {
+        // a duration is a literal, so its day count is computed at generation time: two weeks is 14
+        assertThat(compile("validUntil + duration(\"P2W\") >= today()"))
+                .contains("datePlusDays(state.validUntil(), 14)");
+        assertThatThrownBy(() -> compile("validUntil + duration(\"P1M\") >= today()"))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test

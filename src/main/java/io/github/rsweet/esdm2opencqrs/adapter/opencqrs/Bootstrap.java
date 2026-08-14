@@ -517,6 +517,30 @@ final class Bootstrap {
                         return divisor == 0 ? Double.NaN : number(left) / divisor;
                     }
 
+                    /** An ISO-8601 date is already this family's wire form, so date() only validates it. */
+                    public static String date(Object value) {
+                        return java.time.LocalDate.parse(String.valueOf(value)).toString();
+                    }
+
+                    /** A date plus whole days, back in the ISO form everything else compares. */
+                    public static String datePlusDays(Object date, Object days) {
+                        return java.time.LocalDate.parse(String.valueOf(date))
+                                .plusDays((long) number(days))
+                                .toString();
+                    }
+
+                    public static boolean startsWith(Object value, Object prefix) {
+                        return String.valueOf(value).startsWith(String.valueOf(prefix));
+                    }
+
+                    public static boolean endsWith(Object value, Object suffix) {
+                        return String.valueOf(value).endsWith(String.valueOf(suffix));
+                    }
+
+                    public static boolean contains(Object value, Object part) {
+                        return String.valueOf(value).contains(String.valueOf(part));
+                    }
+
                     /** Ordering as a predicate: an unusable operand answers false in both directions. */
                     public static boolean ordered(String operator, Object left, Object right) {
                         if (left instanceof Double leftNaN && leftNaN.isNaN()) {

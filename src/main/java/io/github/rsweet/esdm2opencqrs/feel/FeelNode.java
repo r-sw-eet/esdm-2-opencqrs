@@ -32,6 +32,15 @@ public sealed interface FeelNode {
     /** {@code if c then a else b}. Lowest precedence, so the branches are whole expressions. */
     record Conditional(FeelNode condition, FeelNode whenTrue, FeelNode whenFalse) implements FeelNode {}
 
-    /** The niladic functions {@code today()} and {@code now()}. */
-    record Call(String function) implements FeelNode {}
+    /**
+     * A function call. Carrying arguments is what makes {@code date}, {@code duration},
+     * {@code starts with} and {@code contains} expressible at all; {@code today()} and
+     * {@code now()} are the same node with an empty list.
+     */
+    record Call(String function, List<FeelNode> arguments) implements FeelNode {
+
+        public Call(String function) {
+            this(function, List.of());
+        }
+    }
 }

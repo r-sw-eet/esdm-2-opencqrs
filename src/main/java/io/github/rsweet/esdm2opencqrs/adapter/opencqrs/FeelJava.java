@@ -2,6 +2,7 @@ package io.github.rsweet.esdm2opencqrs.adapter.opencqrs;
 
 import io.github.rsweet.esdm2opencqrs.feel.FeelNode;
 import io.github.rsweet.esdm2opencqrs.support.Str;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /** Compiles a FEEL AST to a Java boolean expression over the write model {@code state}. */
@@ -41,10 +42,7 @@ public final class FeelJava {
                     + compileNode(conditional.condition(), basePackage, receiver) + " ? "
                     + compileNode(conditional.whenTrue(), basePackage, receiver) + " : "
                     + compileNode(conditional.whenFalse(), basePackage, receiver) + ")";
-            case FeelNode.Call call ->
-                call.function().equals("today")
-                        ? "java.time.LocalDate.now().toString()"
-                        : "java.time.Instant.now().toString()";
+            case FeelNode.Call call -> call(call, basePackage, receiver);
         };
     }
 
@@ -59,6 +57,15 @@ public final class FeelJava {
         // Arithmetic never compiles to a bare Java operator: `7 / 2` on two longs is 3 here and
         // 3.5 in every sibling language, so the helper keeps the whole expression in the real
         // number domain (proposal 0002, amendment 2026-08-14).
+        // `validUntil + duration("P14D")` is a date shift, not a sum - the temporal row 0002 has
+        // claimed since v1, reachable only now that calls can carry arguments.
+        if (binary.operator().equals("+") && isDuration(binary.right())) {
+            return guards + "datePlusDays(" + left + ", " + right + ")";
+        }
+        if (binary.operator().equals("-") && isDuration(binary.right())) {
+            return guards + "datePlusDays(" + left + ", -(" + right + "))";
+        }
+
         switch (binary.operator()) {
             case "+":
                 return guards + "add(" + left + ", " + right + ")";
@@ -77,6 +84,50 @@ public final class FeelJava {
             case "!=" -> "!" + guards + "equal(" + left + ", " + right + ")";
             default -> guards + "ordered(\"" + binary.operator() + "\", " + left + ", " + right + ")";
         };
+    }
+
+    /**
+     * The supported calls. `date` is the identity on an ISO-8601 string, because this family
+     * already compares dates as ISO strings and lexical order is chronological there; `duration`
+     * yields whole days, which is all {@link Guards#datePlusDays} needs.
+     */
+    private static String call(FeelNode.Call call, String basePackage, String receiver) {
+        String guards = basePackage + ".support.Guards.";
+        List<String> arguments =
+                call.arguments().stream().map(argument -> compileNode(argument, basePackage, receiver)).toList();
+
+        return switch (call.function()) {
+            case "today" -> "java.time.LocalDate.now().toString()";
+            case "now" -> "java.time.Instant.now().toString()";
+            case "date" -> guards + "date(" + arguments.get(0) + ")";
+            case "duration" -> String.valueOf(durationDays(call.arguments().get(0)));
+            case "starts with" -> guards + "startsWith(" + arguments.get(0) + ", " + arguments.get(1) + ")";
+            case "ends with" -> guards + "endsWith(" + arguments.get(0) + ", " + arguments.get(1) + ")";
+            case "contains" -> guards + "contains(" + arguments.get(0) + ", " + arguments.get(1) + ")";
+            default -> throw new IllegalStateException("unsupported function " + call.function());
+        };
+    }
+
+    /**
+     * A duration is always a literal, so its day count is computed here rather than by emitted
+     * code. Weeks are days; months and years are not, since their length depends on the date.
+     */
+    static long durationDays(FeelNode node) {
+        if (!(node instanceof FeelNode.Str literal)) {
+            throw new IllegalStateException("duration() takes a string literal");
+        }
+        java.util.regex.Matcher matcher =
+                java.util.regex.Pattern.compile("^P(\\d+)([DW])$").matcher(literal.value());
+        if (!matcher.matches()) {
+            throw new IllegalStateException("unsupported duration \"" + literal.value() + "\" - use P<n>D or P<n>W");
+        }
+        long amount = Long.parseLong(matcher.group(1));
+
+        return matcher.group(2).equals("W") ? amount * 7 : amount;
+    }
+
+    private static boolean isDuration(FeelNode node) {
+        return node instanceof FeelNode.Call call && call.function().equals("duration");
     }
 
     private static String identifier(String name, String receiver) {

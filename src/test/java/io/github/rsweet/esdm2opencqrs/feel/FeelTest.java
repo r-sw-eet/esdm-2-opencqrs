@@ -49,6 +49,14 @@ class FeelTest {
     }
 
     @Test
+    void callsCarryArgumentsAndTheirArityIsChecked() {
+        assertThat(Feel.validate(Feel.parse("contains(product, \"c\")"), java.util.List.of("product")))
+                .isEmpty();
+        assertThat(Feel.validate(Feel.parse("starts with(product)"), java.util.List.of("product")))
+                .containsExactly("starts with takes 2 arguments, got 1");
+    }
+
+    @Test
     void conditionalsParseAndBindTheirBranches() {
         String expression = "if quantity > 1 then amount * quantity >= 5000 else amount >= 99999";
 

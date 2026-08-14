@@ -171,6 +171,35 @@ public final class Parser {
         return new FeelNode.In(left, List.copyOf(items));
     }
 
+    private static final List<String> FUNCTIONS = List.of("date", "duration", "contains");
+
+    /** Returns the function name if this token (plus maybe the next) starts a supported call. */
+    private String twoWordFunction(String lower) {
+        if ((lower.equals("starts") || lower.equals("ends"))
+                && tokens.get(index + 1).value().equalsIgnoreCase("with")
+                && tokens.get(index + 2).value().equals("(")) {
+            return lower + " with";
+        }
+        if (FUNCTIONS.contains(lower) && tokens.get(index + 1).value().equals("(")) {
+            return lower;
+        }
+        return null;
+    }
+
+    private List<FeelNode> arguments() {
+        eat("(");
+        List<FeelNode> arguments = new ArrayList<>();
+        if (!at(")")) {
+            arguments.add(parseOr());
+            while (at(",")) {
+                advance();
+                arguments.add(parseOr());
+            }
+        }
+        eat(")");
+        return List.copyOf(arguments);
+    }
+
     private static FeelNode range(FeelNode value, FeelNode low, FeelNode high) {
         return new FeelNode.And(
                 new FeelNode.Binary(">=", value, low), new FeelNode.Binary("<=", value, high));
@@ -233,6 +262,16 @@ public final class Parser {
                 eat("(");
                 eat(")");
                 return new FeelNode.Call(lower);
+            }
+
+            // FEEL spells some function names with a space, so the name is up to two tokens.
+            String function = twoWordFunction(lower);
+            if (function != null) {
+                advance();
+                if (function.contains(" ")) {
+                    advance();
+                }
+                return new FeelNode.Call(function, arguments());
             }
 
             advance();

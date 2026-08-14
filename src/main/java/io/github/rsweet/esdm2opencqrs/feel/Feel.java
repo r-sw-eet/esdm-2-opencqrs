@@ -31,6 +31,9 @@ public final class Feel {
 
     private static final List<String> ARITHMETIC = List.of("+", "-", "*", "/");
 
+    private static final Map<String, Integer> ARITY = Map.of(
+            "today", 0, "now", 0, "date", 1, "duration", 1, "starts with", 2, "ends with", 2, "contains", 2);
+
     private static void arithmetic(FeelNode node, Map<String, String> types, List<String> errors) {
         switch (node) {
             case FeelNode.Binary binary -> {
@@ -57,6 +60,7 @@ public final class Feel {
             }
             case FeelNode.Not not -> arithmetic(not.expression(), types, errors);
             case FeelNode.Negate negate -> arithmetic(negate.expression(), types, errors);
+            case FeelNode.Call call -> call.arguments().forEach(argument -> arithmetic(argument, types, errors));
             case FeelNode.Conditional conditional -> {
                 arithmetic(conditional.condition(), types, errors);
                 arithmetic(conditional.whenTrue(), types, errors);
@@ -111,6 +115,16 @@ public final class Feel {
             case FeelNode.In in -> {
                 bind(in.expression(), allowed, errors);
                 in.list().forEach(item -> bind(item, allowed, errors));
+            }
+            case FeelNode.Call call -> {
+                Integer arity = ARITY.get(call.function());
+                if (arity == null) {
+                    errors.add("unknown function \"" + call.function() + "\"");
+                } else if (arity != call.arguments().size()) {
+                    errors.add(call.function() + " takes " + arity + " argument"
+                            + (arity == 1 ? "" : "s") + ", got " + call.arguments().size());
+                }
+                call.arguments().forEach(argument -> bind(argument, allowed, errors));
             }
             default -> {}
         }
