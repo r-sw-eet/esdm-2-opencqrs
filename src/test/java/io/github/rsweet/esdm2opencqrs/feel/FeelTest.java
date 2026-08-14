@@ -49,8 +49,31 @@ class FeelTest {
     }
 
     @Test
-    void stillRejectsBinaryMinusUntilArithmeticLands() {
-        assertThatThrownBy(() -> Feel.parse("a - b")).isInstanceOf(FeelException.class);
+    void theArithmeticGateRejectsWhatTheAmendmentSaysItShould() {
+        java.util.List<String> allowed = java.util.List.of("amount", "quantity", "status");
+        java.util.Map<String, String> types =
+                java.util.Map.of("amount", "number", "quantity", "integer", "status", "string");
+
+        assertThat(Feel.validate(Feel.parse("amount * quantity >= 5000"), allowed, types)).isEmpty();
+        assertThat(Feel.validate(Feel.parse("status * 2 > 1"), allowed, types))
+                .containsExactly("arithmetic on the string field \"status\"");
+        assertThat(Feel.validate(Feel.parse("amount / 0 > 1"), allowed, types))
+                .containsExactly("division by a literal zero");
+    }
+
+    @Test
+    void arithmeticBindsTighterThanComparison() {
+        assertThat(Feel.parse("a - b > 1"))
+                .isInstanceOfSatisfying(FeelNode.Binary.class, comparison -> {
+                    assertThat(comparison.operator()).isEqualTo(">");
+                    assertThat(comparison.left()).isInstanceOf(FeelNode.Binary.class);
+                });
+    }
+
+    @Test
+    void multiplicationBindsTighterThanAddition() {
+        assertThat(Feel.parse("x = 1 + 2 * 3")).isEqualTo(Feel.parse("x = 1 + (2 * 3)"));
+        assertThat(Feel.parse("x = 1 + 2 * 3")).isNotEqualTo(Feel.parse("x = (1 + 2) * 3"));
     }
 
     @Test

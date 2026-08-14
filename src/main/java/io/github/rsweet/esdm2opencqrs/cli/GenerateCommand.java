@@ -210,12 +210,16 @@ public final class GenerateCommand implements Callable<Integer> {
                     aggregate.state().fields().stream().map(Field::name).toList());
             allowed.add("status");
 
+            // The arithmetic gate needs the declared types, which the binder never had.
+            Map<String, String> types = new LinkedHashMap<>();
+            aggregate.state().fields().forEach(field -> types.put(field.name(), field.jsonType()));
+
             for (StateMachine.Admit admit : machine.admits()) {
                 if (admit.when() == null || admit.when().isEmpty()) {
                     continue;
                 }
                 try {
-                    for (String bindError : Feel.validate(Feel.parse(admit.when()), allowed)) {
+                    for (String bindError : Feel.validate(Feel.parse(admit.when()), allowed, types)) {
                         errors.add(admit.command() + ".when \"" + admit.when() + "\": " + bindError);
                     }
                 } catch (FeelException e) {

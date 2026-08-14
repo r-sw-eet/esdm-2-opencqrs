@@ -10,7 +10,7 @@ public final class Lexer {
 
     // Anchored, ordered alternation; longest operators first.
     private static final Pattern PATTERN =
-            Pattern.compile("(\\s+)|(\\d+(?:\\.\\d+)?)|(\"[^\"]*\")|(\\.\\.)|(<=|>=|!=|=|<|>)|(-)"
+            Pattern.compile("(\\s+)|(\\d+(?:\\.\\d+)?)|(\"[^\"]*\")|(\\.\\.)|(<=|>=|!=|=|<|>)|([-+*/])"
                     + "|([()\\[\\],])|([A-Za-z_][A-Za-z0-9_]*)");
 
     private Lexer() {}

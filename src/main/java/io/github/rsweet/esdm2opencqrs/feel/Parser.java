@@ -78,12 +78,12 @@ public final class Parser {
     private static final List<String> COMPARISONS = List.of("=", "!=", "<", "<=", ">", ">=");
 
     private FeelNode parseComparison() {
-        FeelNode left = parsePrimary();
+        FeelNode left = parseAdditive();
         Token token = peek();
 
         if (token.type() == Token.Type.OP && COMPARISONS.contains(token.value())) {
             advance();
-            return new FeelNode.Binary(token.value(), left, parsePrimary());
+            return new FeelNode.Binary(token.value(), left, parseAdditive());
         }
 
         if (isKeyword("in")) {
@@ -95,14 +95,36 @@ public final class Parser {
         // compiler in the family unaware that it exists.
         if (isKeyword("between")) {
             advance();
-            FeelNode low = parsePrimary();
+            FeelNode low = parseAdditive();
             if (!isKeyword("and")) {
                 throw new FeelException("Expected \"and\" in a between expression");
             }
             advance();
-            return range(left, low, parsePrimary());
+            return range(left, low, parseAdditive());
         }
 
+        return left;
+    }
+
+    /** Left-associative, and binding tighter than any comparison. */
+    private FeelNode parseAdditive() {
+        FeelNode left = parseMultiplicative();
+        while (at("+") || at("-")) {
+            String operator = peek().value();
+            advance();
+            left = new FeelNode.Binary(operator, left, parseMultiplicative());
+        }
+        return left;
+    }
+
+    /** Binds tighter than {@code +} and {@code -}. */
+    private FeelNode parseMultiplicative() {
+        FeelNode left = parsePrimary();
+        while (at("*") || at("/")) {
+            String operator = peek().value();
+            advance();
+            left = new FeelNode.Binary(operator, left, parsePrimary());
+        }
         return left;
     }
 

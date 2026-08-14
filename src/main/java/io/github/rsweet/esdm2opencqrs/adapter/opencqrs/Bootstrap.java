@@ -490,6 +490,55 @@ final class Bootstrap {
                      * FEEL equality. Numbers compare by value, so a {@code Long} field and an {@code int} literal are
                      * equal when they should be - {@link java.util.Objects#equals} would compare box types and say no.
                      */
+                    /**
+                     * FEEL arithmetic, always in the real number domain: Java is the only target
+                     * language that would divide two integers as integers.
+                     */
+                    public static double add(Object left, Object right) {
+                        return number(left) + number(right);
+                    }
+
+                    public static double subtract(Object left, Object right) {
+                        return number(left) - number(right);
+                    }
+
+                    public static double multiply(Object left, Object right) {
+                        return number(left) * number(right);
+                    }
+
+                    /**
+                     * FEEL yields null on a zero divisor, and null in a predicate is false. NaN carries
+                     * that here, because {@link #ordered} makes every comparison against it false - the
+                     * same outcome the sibling languages reach with their own NaN.
+                     */
+                    public static double divide(Object left, Object right) {
+                        double divisor = number(right);
+
+                        return divisor == 0 ? Double.NaN : number(left) / divisor;
+                    }
+
+                    /** Ordering as a predicate: an unusable operand answers false in both directions. */
+                    public static boolean ordered(String operator, Object left, Object right) {
+                        if (left instanceof Double leftNaN && leftNaN.isNaN()) {
+                            return false;
+                        }
+                        if (right instanceof Double rightNaN && rightNaN.isNaN()) {
+                            return false;
+                        }
+                        int order = compare(left, right);
+
+                        return switch (operator) {
+                            case "<" -> order < 0;
+                            case "<=" -> order <= 0;
+                            case ">" -> order > 0;
+                            default -> order >= 0;
+                        };
+                    }
+
+                    private static double number(Object value) {
+                        return value instanceof Number n ? n.doubleValue() : Double.NaN;
+                    }
+
                     public static boolean equal(Object left, Object right) {
                         if (left instanceof Number leftNumber && right instanceof Number rightNumber) {
                             return Double.compare(leftNumber.doubleValue(), rightNumber.doubleValue()) == 0;

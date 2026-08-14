@@ -19,7 +19,7 @@ class FeelJavaTest {
     @Test
     void orderingGoesThroughTheComparisonHelper() {
         assertThat(compile("paidAmount >= total"))
-                .isEqualTo("(app.demo.support.Guards.compare(state.paidAmount(), state.total()) >= 0)");
+                .isEqualTo("app.demo.support.Guards.ordered(\">=\", state.paidAmount(), state.total())");
     }
 
     @Test
@@ -31,8 +31,20 @@ class FeelJavaTest {
     @Test
     void compilesTemporalFunctions() {
         assertThat(compile("validUntil >= today()"))
-                .isEqualTo("(app.demo.support.Guards.compare(state.validUntil(),"
-                        + " java.time.LocalDate.now().toString()) >= 0)");
+                .isEqualTo("app.demo.support.Guards.ordered(\">=\", state.validUntil(),"
+                        + " java.time.LocalDate.now().toString())");
+    }
+
+    @Test
+    void arithmeticNeverCompilesToABareJavaOperator() {
+        // `amount * quantity` on two longs would be exact here but `/` would be integer division,
+        // so the whole expression stays in the helper's real-number domain.
+        assertThat(compile("amount * quantity >= 5000"))
+                .isEqualTo("app.demo.support.Guards.ordered(\">=\","
+                        + " app.demo.support.Guards.multiply(state.amount(), state.quantity()), 5000)");
+        assertThat(compile("total / count > 1"))
+                .isEqualTo("app.demo.support.Guards.ordered(\">\","
+                        + " app.demo.support.Guards.divide(state.total(), state.count()), 1)");
     }
 
     @Test

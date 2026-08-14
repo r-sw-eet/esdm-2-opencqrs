@@ -51,10 +51,27 @@ public final class FeelJava {
         // Both go through Guards: FEEL compares numbers by value across box types, and orders
         // dates-as-strings as well as numbers - Java has no operator that spans either case.
         String guards = basePackage + ".support.Guards.";
+
+        // Arithmetic never compiles to a bare Java operator: `7 / 2` on two longs is 3 here and
+        // 3.5 in every sibling language, so the helper keeps the whole expression in the real
+        // number domain (proposal 0002, amendment 2026-08-14).
+        switch (binary.operator()) {
+            case "+":
+                return guards + "add(" + left + ", " + right + ")";
+            case "-":
+                return guards + "subtract(" + left + ", " + right + ")";
+            case "*":
+                return guards + "multiply(" + left + ", " + right + ")";
+            case "/":
+                return guards + "divide(" + left + ", " + right + ")";
+            default:
+                break;
+        }
+
         return switch (binary.operator()) {
             case "=" -> guards + "equal(" + left + ", " + right + ")";
             case "!=" -> "!" + guards + "equal(" + left + ", " + right + ")";
-            default -> "(" + guards + "compare(" + left + ", " + right + ") " + binary.operator() + " 0)";
+            default -> guards + "ordered(\"" + binary.operator() + "\", " + left + ", " + right + ")";
         };
     }
 
