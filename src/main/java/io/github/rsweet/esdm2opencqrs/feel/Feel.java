@@ -57,6 +57,11 @@ public final class Feel {
             }
             case FeelNode.Not not -> arithmetic(not.expression(), types, errors);
             case FeelNode.Negate negate -> arithmetic(negate.expression(), types, errors);
+            case FeelNode.Conditional conditional -> {
+                arithmetic(conditional.condition(), types, errors);
+                arithmetic(conditional.whenTrue(), types, errors);
+                arithmetic(conditional.whenFalse(), types, errors);
+            }
             case FeelNode.In in -> {
                 arithmetic(in.expression(), types, errors);
                 in.list().forEach(item -> arithmetic(item, types, errors));
@@ -97,6 +102,12 @@ public final class Feel {
                 bind(binary.right(), allowed, errors);
             }
             case FeelNode.Not not -> bind(not.expression(), allowed, errors);
+            case FeelNode.Negate negate -> bind(negate.expression(), allowed, errors);
+            case FeelNode.Conditional conditional -> {
+                bind(conditional.condition(), allowed, errors);
+                bind(conditional.whenTrue(), allowed, errors);
+                bind(conditional.whenFalse(), allowed, errors);
+            }
             case FeelNode.In in -> {
                 bind(in.expression(), allowed, errors);
                 in.list().forEach(item -> bind(item, allowed, errors));

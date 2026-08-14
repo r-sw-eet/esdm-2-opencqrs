@@ -37,6 +37,10 @@ public final class FeelJava {
             case FeelNode.Bool bool -> bool.value() ? "true" : "false";
             case FeelNode.NullLiteral ignored -> "null";
             case FeelNode.Negate negate -> "-(" + compileNode(negate.expression(), basePackage, receiver) + ")";
+            case FeelNode.Conditional conditional -> "("
+                    + compileNode(conditional.condition(), basePackage, receiver) + " ? "
+                    + compileNode(conditional.whenTrue(), basePackage, receiver) + " : "
+                    + compileNode(conditional.whenFalse(), basePackage, receiver) + ")";
             case FeelNode.Call call ->
                 call.function().equals("today")
                         ? "java.time.LocalDate.now().toString()"

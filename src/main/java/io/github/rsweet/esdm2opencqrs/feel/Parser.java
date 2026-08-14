@@ -58,6 +58,23 @@ public final class Parser {
     }
 
     private FeelNode parseOr() {
+        // `if` sits at the lowest precedence, so its branches are whole expressions and it needs
+        // no parentheses to hold them.
+        if (isKeyword("if")) {
+            advance();
+            FeelNode condition = parseOr();
+            if (!isKeyword("then")) {
+                throw new FeelException("Expected \"then\" in a conditional");
+            }
+            advance();
+            FeelNode whenTrue = parseOr();
+            if (!isKeyword("else")) {
+                throw new FeelException("Expected \"else\" in a conditional");
+            }
+            advance();
+            return new FeelNode.Conditional(condition, whenTrue, parseOr());
+        }
+
         FeelNode left = parseAnd();
         while (isKeyword("or")) {
             advance();

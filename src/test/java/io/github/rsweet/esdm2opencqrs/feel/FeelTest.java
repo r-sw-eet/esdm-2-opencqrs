@@ -49,6 +49,19 @@ class FeelTest {
     }
 
     @Test
+    void conditionalsParseAndBindTheirBranches() {
+        String expression = "if quantity > 1 then amount * quantity >= 5000 else amount >= 99999";
+
+        assertThat(Feel.parse(expression)).isInstanceOf(FeelNode.Conditional.class);
+        assertThat(Feel.validate(
+                        Feel.parse(expression),
+                        java.util.List.of("amount", "quantity"),
+                        java.util.Map.of("amount", "number", "quantity", "integer")))
+                .isEmpty();
+        assertThatThrownBy(() -> Feel.parse("if a then b")).isInstanceOf(FeelException.class);
+    }
+
+    @Test
     void theArithmeticGateRejectsWhatTheAmendmentSaysItShould() {
         java.util.List<String> allowed = java.util.List.of("amount", "quantity", "status");
         java.util.Map<String, String> types =

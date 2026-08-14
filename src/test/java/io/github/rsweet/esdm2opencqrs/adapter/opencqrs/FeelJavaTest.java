@@ -48,6 +48,15 @@ class FeelJavaTest {
     }
 
     @Test
+    void compilesAConditionalAndAUnaryMinus() {
+        assertThat(compile("if a then 1 else 2"))
+                .isEqualTo("(app.demo.support.Guards.equal(state.a(), true) ? 1 : 2)".replace(
+                        "app.demo.support.Guards.equal(state.a(), true)", "state.a()"));
+        assertThat(compile("-amount > 1"))
+                .isEqualTo("app.demo.support.Guards.ordered(\">\", -(state.amount()), 1)");
+    }
+
+    @Test
     void compilesBooleanCombinators() {
         assertThat(compile("not(a = 1) and b in [2, 3]"))
                 .isEqualTo("(!(app.demo.support.Guards.equal(state.a(), 1)) &&"
