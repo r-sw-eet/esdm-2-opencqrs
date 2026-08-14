@@ -26,6 +26,9 @@ public sealed interface FeelNode {
     /** The FEEL {@code null} literal. Without it, `null` lexes as a field name. */
     record NullLiteral() implements FeelNode {}
 
+    /** Unary minus. A negative *literal* folds into {@link Num} instead. */
+    record Negate(FeelNode expression) implements FeelNode {}
+
     /** The niladic functions {@code today()} and {@code now()}. */
     record Call(String function) implements FeelNode {}
 }

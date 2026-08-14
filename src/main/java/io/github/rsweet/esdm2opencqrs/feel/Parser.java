@@ -75,39 +75,80 @@ public final class Parser {
         return left;
     }
 
+    private static final List<String> COMPARISONS = List.of("=", "!=", "<", "<=", ">", ">=");
+
     private FeelNode parseComparison() {
         FeelNode left = parsePrimary();
         Token token = peek();
 
-        if (token.type() == Token.Type.OP) {
+        if (token.type() == Token.Type.OP && COMPARISONS.contains(token.value())) {
             advance();
             return new FeelNode.Binary(token.value(), left, parsePrimary());
         }
 
         if (isKeyword("in")) {
             advance();
-            return new FeelNode.In(left, parseList());
+            return parseMembership(left);
+        }
+
+        // `x between a and b` is sugar for two comparisons; desugaring here keeps every
+        // compiler in the family unaware that it exists.
+        if (isKeyword("between")) {
+            advance();
+            FeelNode low = parsePrimary();
+            if (!isKeyword("and")) {
+                throw new FeelException("Expected \"and\" in a between expression");
+            }
+            advance();
+            return range(left, low, parsePrimary());
         }
 
         return left;
     }
 
-    private List<FeelNode> parseList() {
+    /** {@code x in [a, b]} stays a membership test; {@code x in [1..10]} desugars to a range. */
+    private FeelNode parseMembership(FeelNode left) {
         eat("[");
+        if (at("]")) {
+            eat("]");
+            return new FeelNode.In(left, List.of());
+        }
+
+        FeelNode first = parsePrimary();
+        if (at("..")) {
+            advance();
+            FeelNode high = parsePrimary();
+            eat("]");
+            return range(left, first, high);
+        }
+
         List<FeelNode> items = new ArrayList<>();
-        if (!at("]")) {
+        items.add(first);
+        while (at(",")) {
+            advance();
             items.add(parsePrimary());
-            while (at(",")) {
-                advance();
-                items.add(parsePrimary());
-            }
         }
         eat("]");
-        return List.copyOf(items);
+        return new FeelNode.In(left, List.copyOf(items));
+    }
+
+    private static FeelNode range(FeelNode value, FeelNode low, FeelNode high) {
+        return new FeelNode.And(
+                new FeelNode.Binary(">=", value, low), new FeelNode.Binary("<=", value, high));
     }
 
     private FeelNode parsePrimary() {
         Token token = peek();
+
+        if (at("-")) {
+            advance();
+            if (peek().type() == Token.Type.NUM) {
+                String value = peek().value();
+                advance();
+                return new FeelNode.Num(-Double.parseDouble(value));
+            }
+            return new FeelNode.Negate(parsePrimary());
+        }
 
         if (at("(")) {
             advance();

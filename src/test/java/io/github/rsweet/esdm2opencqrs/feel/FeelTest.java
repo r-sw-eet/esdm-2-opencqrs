@@ -25,6 +25,35 @@ class FeelTest {
     }
 
     @Test
+    void foldsANegativeLiteralSoTheEmittedCodeReadsNaturally() {
+        assertThat(Feel.parse("amount > -1"))
+                .isInstanceOfSatisfying(FeelNode.Binary.class, binary ->
+                        assertThat(binary.right()).isEqualTo(new FeelNode.Num(-1)));
+    }
+
+    @Test
+    void desugarsBetweenIntoTwoComparisons() {
+        assertThat(Feel.parse("qty between 1 and 10"))
+                .isEqualTo(Feel.parse("qty >= 1 and qty <= 10"));
+    }
+
+    @Test
+    void desugarsARangeIntoTwoComparisons() {
+        assertThat(Feel.parse("qty in [1..10]"))
+                .isEqualTo(Feel.parse("qty >= 1 and qty <= 10"));
+    }
+
+    @Test
+    void keepsMembershipAsMembership() {
+        assertThat(Feel.parse("status in [\"a\", \"b\"]")).isInstanceOf(FeelNode.In.class);
+    }
+
+    @Test
+    void stillRejectsBinaryMinusUntilArithmeticLands() {
+        assertThatThrownBy(() -> Feel.parse("a - b")).isInstanceOf(FeelException.class);
+    }
+
+    @Test
     void parsesComparison() {
         assertThat(Feel.parse("paidAmount >= total"))
                 .isInstanceOfSatisfying(FeelNode.Binary.class, binary -> {
