@@ -143,6 +143,11 @@ public final class Parser {
                 return new FeelNode.Bool(lower.equals("true"));
             }
 
+            if (lower.equals("null")) {
+                advance();
+                return new FeelNode.NullLiteral();
+            }
+
             if (lower.equals("today") || lower.equals("now")) {
                 advance();
                 eat("(");

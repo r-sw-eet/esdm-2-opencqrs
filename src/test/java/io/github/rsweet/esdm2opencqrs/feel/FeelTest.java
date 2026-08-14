@@ -9,6 +9,22 @@ import org.junit.jupiter.api.Test;
 class FeelTest {
 
     @Test
+    void parsesNullAsALiteralAndNotAsAField() {
+        assertThat(Feel.parse("cancelledAt = null"))
+                .isInstanceOfSatisfying(FeelNode.Binary.class, binary -> {
+                    assertThat(binary.left()).isEqualTo(new FeelNode.Id("cancelledAt"));
+                    assertThat(binary.right()).isEqualTo(new FeelNode.NullLiteral());
+                });
+    }
+
+    @Test
+    void bindsNullWithoutBlamingTheModel() {
+        // `null` used to lex as a name, so this reported: unknown field "null".
+        assertThat(Feel.validate(Feel.parse("cancelledAt = null"), java.util.List.of("cancelledAt")))
+                .isEmpty();
+    }
+
+    @Test
     void parsesComparison() {
         assertThat(Feel.parse("paidAmount >= total"))
                 .isInstanceOfSatisfying(FeelNode.Binary.class, binary -> {
